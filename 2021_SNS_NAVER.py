@@ -1,131 +1,136 @@
 from bs4 import BeautifulSoup
 from selenium import webdriver
+import time,pandas as pd, urllib.request, os
 
-import time, pandas as pd
 
-print("네이버 영화 리뷰 정보 수집")
+print("지마켓 Best Seller 상품 정보 추출하기 ")
 
-crew_text = input('1. 크롤링 키워드 : ')
-cnt = int(input('2. 크롤링 리뷰 개수 : '))
-f_dir = input("3. 저장위치 : ")
+query_url = "http://corners.gmarket.co.kr/Bestsellers"
+#f_dir = "C:/Users/DELL/Desktop/data"
 
+cnt = int(input('1. 크롤링 개수 : '))
+f_dir=input('2. 파일을 저장할 폴더명(예 : c:\\temp\\) : ')
+
+# 파일위치, 이름 지정
 now = time.localtime()
 s = '%04d-%02d-%02d-%02d-%02d-%02d' % (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec)
 
-query_url = 'https://movie.naver.com'
+resultName = s + '-' + 'G마켓'
+fileName = f_dir + '/' + resultName
+imageName = f_dir + '/images/'
+
+#이미지가 저장될 폴더 생성
+os.makedirs(f_dir + '/images')
+
 path = "C:/Users/DELL/Desktop/chromedriver.exe"
 driver = webdriver.Chrome(path)
+
 driver.get(query_url)
+time.sleep(1)
 
-fileName = f_dir + '/' + crew_text
+#스크롤 내리기 (이미지 데이터 획득)
+for i in range(40):
+    driver.execute_script('window.scrollBy(0, 500);')
+    time.sleep(0.1)
+
+crew_cnt = 1
+crew_ranking = []
+crew_title = []
+crew_literally_price = []
+crew_literally_s_price = []
+crew_discount2 = []
+imgs = []
+
+html = driver.page_source
+soup = BeautifulSoup(html, 'html.parser')
+
+sale_result = soup.select('div.best-list')
+slist = sale_result[1].select('ul > li')
 
 
-# 키워드 검색 후 평점으로 이동.
-element = driver.find_element_by_id("ipt_tx_srch")
-element.send_keys(crew_text)
-driver.find_element_by_xpath("""//*[@id="jSearchArea"]/div/button""").click()
-driver.find_element_by_xpath("""//*[@id="old_content"]/ul[2]/li/dl/dt/a""").click()
-
-driver.find_element_by_link_text("평점").click()
-
-driver.switch_to.frame('pointAfterListIframe')
-
-crew_score=[]
-crew_review=[]
-crew_writer=[]
-crew_wdate=[]
-crew_gonggam=[]
-g_crew_gonggam=[]
-b_crew_gonggam=[]
-crew_dwlist=[]
-
-# 카운트
-count = 0
-# 페이지 번호
-click_count = 1
+count = 1
 
 while True:
-    html = driver.page_source
-    soup = BeautifulSoup(html, 'html.parser')
-
-    score_result = soup.find('div', class_='score_result').find('ul')
-    slist = score_result.find_all('li')
-
     for li in slist:
 
-        count += 1
+        f = open(fileName, 'a', encoding='UTF-8')
+        print("-" * 40)
+        f.write("-----------------------------------------------------" + "\n")
 
-        f = open(fileName + '.txt' , 'a', encoding='UTF-8')
+        try:
+            title = li.select('a.itemname')[0].get_text().strip()
+        except:
+            title = ''
+            print(title)
+            f.write('2.제품소개:' + title + "\n")
+        else:
+            print("1.판매순위 : " + str(crew_cnt))
+            print("2.제품소개:", title)
+            f.write('2.제품소개:' + title + "\n")
 
-        score = li.find('div', class_='star_score').find('em').get_text().strip()
-        crew_score.append(score)
+        try:
+            literally_price = li.find('div', class_='item_price').find('div', 'o-price').get_text().strip()
+            print("3.원래가격:", literally_price)
+            f.write('3.원래가격:' + literally_price + "\n")
+        except AttributeError:
+            literally_price = '-'
+            print("3.원래가격:", literally_price)
+            f.write('3.원래가격:' + literally_price + "\n")
 
-        review = li.find('div', class_='score_reple').find('p').find('span').get_text().strip()
-        crew_review.append(review)
+        literally_s_price = li.find('div', class_='item_price').find('div', 's-price').find('strong').get_text().strip()
+        print("4.판매가격:", literally_s_price)
+        f.write('4.판매가격:' + literally_s_price + "\n")
 
-        dwlist = li.find('div', class_='score_reple').find_all('em')
-        writer = dwlist[0].find('span').get_text()
-        crew_writer.append(writer)
+        #할인율이 존재하지 않을 경우 0% 데이터 추가
+        try:
+            crew_discount = li.find('div', class_='item_price').find('div', 's-price').find('em').get_text().strip()
+            print("5.할인율:", crew_discount)
+            f.write('5.할인율:' + crew_discount + "\n")
 
-        wdate = dwlist[1].text
-        crew_wdate.append(wdate)
+        except AttributeError:
+            crew_discount = '0%'
+            print("5.할인율:", crew_discount)
+            f.write('5.할인율:' + crew_discount + "\n")
 
-        gogam = li.find('div', class_='btn_area').find_all('strong')
-        g_gogam = gogam[0].text
-        g_crew_gonggam.append(g_gogam)
+        #이미지
+        try:
+            getSrc = li.find('img', class_='lazy')['src']
+            urllib.request.urlretrieve(getSrc, imageName + str(crew_cnt) + '.jpg')
+            imgs.append(imageName + str(crew_cnt) + '.jpg')
+        except (IndexError, AttributeError):
+            continue
 
-        b_gogam = gogam[1].text
-        b_crew_gonggam.append(b_gogam)
 
-        print("\n")
-        print("총 %s 건 중 %s 번째 리뷰 데이터를 수집합니다==============" % (cnt, count))
-        print("1.별점:", "*" * int(score), ": ", score)
-        print("2.리뷰내용:", review)
-        print("3.작성자:", writer)
-        print('4.작성일자:', wdate)
-        print('5.공감:', g_gogam)
-        print('6.비공감:', b_gogam)
-        print("\n")
-        
-        f.write("1.별점:" + score + "\n")
-        f.write("2.리뷰내용:" + review + "\n")
-        f.write("3.작성자:" + writer + "\n")
-        f.write("4.작성일자:" + wdate + "\n")
-        f.write("5.공감:" + g_gogam + "\n")
-        f.write("6.비공감:" + b_gogam + "\n")
-        
-        
+        #배열저장
+        crew_ranking.append(crew_cnt)
+        crew_title.append(title)
+        crew_literally_price.append(literally_price)
+        crew_literally_s_price.append(literally_s_price)
+        crew_discount2.append(crew_discount)
+
         if count == cnt:
             break
+
+        count += 1
+        crew_cnt += 1
+
 
     if count == cnt:
         break
 
-    time.sleep(2)
-
-    click_count += 1
-
-    # 페이지 번호 넘기기
-    if click_count > cnt:
-        break
-    else:
-        driver.find_element_by_xpath('//*[@id="pagerTagAnchor' + str(click_count) + '"]').click()
-
-    time.sleep(2)
-
-
 driver.quit()
 
-naver_movie = pd.DataFrame()
-naver_movie['별점(평점)']=crew_score
-naver_movie['리뷰내용']=crew_review
-naver_movie['작성자']=crew_writer
-naver_movie['작성일자']=crew_wdate
-naver_movie['공감횟수']=g_crew_gonggam
-naver_movie['비공감횟수']=b_crew_gonggam
 
-#엑셀, csv 형태로 저장하기
-naver_movie.to_excel(fileName + '.xls', index=True)
-naver_movie.to_csv(fileName + '.csv', encoding="utf-8-sig", index=True)
+g_best_seller = pd.DataFrame()
+
+g_best_seller['판매순위'] = crew_ranking
+g_best_seller['제품소개'] = pd.Series(crew_title)
+g_best_seller['원래가격'] = pd.Series(crew_literally_price)
+g_best_seller['판매가격'] = pd.Series(crew_literally_s_price)
+g_best_seller['할인율'] = pd.Series(crew_discount2)
+
+
+# 엑셀 형태로 저장하기
+g_best_seller.to_excel(fileName + '.xlsx', index=True)
 
 print("종료")
