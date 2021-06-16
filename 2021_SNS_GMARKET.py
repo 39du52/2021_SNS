@@ -33,7 +33,7 @@ for i in range(40):
     driver.execute_script('window.scrollBy(0, 500);')
     time.sleep(0.1)
 
-cnt = 1
+crew_cnt = 1
 crew_ranking = []
 crew_title = []
 crew_literally_price = []
@@ -50,23 +50,23 @@ slist = sale_result[1].select('ul > li')
 
 count = 1
 
-for li in slist:
+while True:
+    for li in slist:
 
-    f = open(fileName, 'a', encoding='UTF-8')
-    print("-" * 40)
-    f.write("-----------------------------------------------------" + "\n")
+        f = open(fileName, 'a', encoding='UTF-8')
+        print("-" * 40)
+        f.write("-----------------------------------------------------" + "\n")
 
-    try:
-        title = li.select('a.itemname')[0].get_text().strip()
-    except:
-        title = ''
-        print(title)
-        f.write('2.제품소개:' + title + "\n")
-
-    else:
-        print("1.판매순위 : " + str(cnt))
-        print("2.제품소개:", title)
-        f.write('2.제품소개:' + title + "\n")
+        try:
+            title = li.select('a.itemname')[0].get_text().strip()
+        except:
+            title = ''
+            print(title)
+            f.write('2.제품소개:' + title + "\n")
+        else:
+            print("1.판매순위 : " + str(crew_cnt))
+            print("2.제품소개:", title)
+            f.write('2.제품소개:' + title + "\n")
 
         try:
             literally_price = li.find('div', class_='item_price').find('div', 'o-price').get_text().strip()
@@ -95,22 +95,28 @@ for li in slist:
         #이미지
         try:
             getSrc = li.find('img', class_='lazy')['src']
-            urllib.request.urlretrieve(getSrc, imageName + str(cnt) + '.jpg')
-            imgs.append(imageName + str(cnt) + '.jpg')
+            urllib.request.urlretrieve(getSrc, imageName + str(crew_cnt) + '.jpg')
+            imgs.append(imageName + str(crew_cnt) + '.jpg')
         except (IndexError, AttributeError):
             continue
 
-        if count == cnt:
-            break
 
         #배열저장
-        crew_ranking.append(cnt)
+        crew_ranking.append(crew_cnt)
         crew_title.append(title)
         crew_literally_price.append(literally_price)
         crew_literally_s_price.append(literally_s_price)
         crew_discount2.append(crew_discount)
 
-        cnt += 1
+        if count == cnt:
+            break
+
+        count += 1
+        crew_cnt += 1
+
+
+    if count == cnt:
+        break
 
 driver.quit()
 
